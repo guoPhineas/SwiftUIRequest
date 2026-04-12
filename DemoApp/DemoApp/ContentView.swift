@@ -32,6 +32,7 @@ struct ContentView: View {
                                 NavigationLink(user.name ?? "", destination: {
                                     UserDetail(user: user)
                                         .navigationTitle("User Detail")
+                                        .navigationBarTitleDisplayMode( .inline)
                                 })
                             }
                         }footer: {
