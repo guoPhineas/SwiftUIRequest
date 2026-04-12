@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUIRequest
 
-struct User: ResponseModel,Identifiable {
+struct User: ResponseModel,Identifiable { // Use ResponseModel protocol
     static let requestURL = URL(string: "https://jsonplaceholder.typicode.com/users/")!
     
     let id: Int?
