@@ -20,7 +20,7 @@ struct User: ResponseModel, Identifiable {
 }
 
 struct ContentView: View {
-    @Request([User].self) private var users
+    @Request([User].self) private var users // The default request method is GET
 
     var body: some View {
         VStack(spacing: 12) {
@@ -41,6 +41,27 @@ struct ContentView: View {
     }
 }
 ```
+
+Or
+
+```swift
+// Use ResponseBaseModel protocol, only define the response model.
+struct User: ResponseBaseModel, Identifiable { 
+    let id: Int?
+    let name: String?
+    let username: String?
+    let email: String?
+}
+
+// Use in SwiftUI view
+@Request(
+    url: URL(string: "https://api.example.com/users")!,
+    method: .get,
+    headers: ["Accept": "application/json"]
+) private var users: [User]?
+```
+
+
 
 There is an example app on [DemoApp folder](./DemoApp).
 

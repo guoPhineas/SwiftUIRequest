@@ -90,6 +90,7 @@ public struct Request<Value: Decodable> {
     public init(url: URL,
                 method: HTTPMethod = .get,
                 headers: [String: String] = [:],
+                body: Data? = nil,
                 session: URLSession = .shared,
                 decoder: JSONDecoder = JSONDecoder(),
                 fallbackToRaw: Bool = true) where Value: ResponseBaseModel{
@@ -99,6 +100,7 @@ public struct Request<Value: Decodable> {
         self.loader = {
             var request = URLRequest(url: url)
             request.httpMethod = method.rawValue
+            request.httpBody = body
             for (key, value) in headers {
                 request.setValue(value, forHTTPHeaderField: key)
             }
