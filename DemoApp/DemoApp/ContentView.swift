@@ -8,15 +8,6 @@
 import SwiftUI
 import SwiftUIRequest
 
-struct User:ResponseModel,Identifiable {
-    static let requestURL = URL(string: "https://jsonplaceholder.typicode.com/users/")!
-    
-    let id: Int?
-    let name: String?
-    let username: String?
-    let email: String?
-}
-
 struct ContentView: View {
     @Request([User].self) private var users
     

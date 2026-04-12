@@ -16,6 +16,8 @@ struct UserDetail: View {
                 Text("User name: \(user.username ?? "")")
                 Text("Name: \(user.name ?? "")")
                 Text("Email: \(user.email ?? "")")
+                Text("Home: \(user.address?.street ?? "")")
+                Text("Work: \(user.company?.name ?? "")")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
@@ -25,5 +27,11 @@ struct UserDetail: View {
 }
 
 #Preview {
-    UserDetail(user: User(id: 0, name: "1", username: "2", email: "3"))
+    UserDetail(user:
+        User(id: 0, name: "Phineas", username: "phineas", email: "email@example.com", address:
+                Address(street: "W. Street", suite: "", city: "", zipcode: ""),
+             company:
+                Company(name: "XXX Inc.", catchPhrase: "Device", bs: "Device")
+            )
+    )
 }
