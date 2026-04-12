@@ -7,8 +7,6 @@ import Observation
 import SwiftUI
 #endif
 
-
-
 /// Property wrapper that requests, decodes, and exposes typed network data.
 @MainActor
 @propertyWrapper
@@ -63,10 +61,11 @@ public struct Request<Value: Decodable> {
         let requestURL = type.requestURL
         let requestMethod = type.requestMethod
         let requestHeaders = type.requestHeaders
+        let requestBody = type.requestBody
         let preset = RequestPreset(configuration: configuration)
 
         self.loader = {
-            guard let request = preset.makeRequest(for: requestURL, method: requestMethod, headers: requestHeaders) else {
+            guard let request = preset.makeRequest(for: requestURL, method: requestMethod, headers: requestHeaders, body: requestBody) else {
                 throw URLError(.badURL)
             }
             return try await session.data(for: request)
@@ -120,6 +119,7 @@ public struct Request<Value: Decodable> {
     ///   - url: The endpoint URL.
     ///   - method: The HTTP method. Defaults to `GET`.
     ///   - headers: Additional request headers.
+    ///   - body: The post request body.
     ///   - session: URL session used to execute the request.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
@@ -127,6 +127,7 @@ public struct Request<Value: Decodable> {
                 url: URL,
                 method: HTTPMethod = .get,
                 headers: [String: String] = [:],
+                body: Data? = nil,
                 session: URLSession = .shared,
                 decoder: JSONDecoder = JSONDecoder(),
                 fallbackToRaw: Bool = true) where Value: ResponseBaseModel {
@@ -134,7 +135,7 @@ public struct Request<Value: Decodable> {
         self.decoder = decoder
         self.fallbackToRaw = fallbackToRaw
         self.loader = {
-            guard let request = preset.makeRequest(for: url, method: method, headers: headers) else {
+            guard let request = preset.makeRequest(for: url, method: method, headers: headers, body: body) else {
                 throw URLError(.badURL)
             }
             return try await session.data(for: request)
