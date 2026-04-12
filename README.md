@@ -2,6 +2,20 @@
 
 SwiftUIRequest is a small Swift package for declarative network requests with SwiftUI-friendly state.
 
+## Getting Started
+
+Add SwiftUIRequest in your Swift Package Manager.
+
+```swift
+.package(url: "https://github.com/guoPhineas/SwiftUIRequest.git", branch: "main"),
+```
+
+Import in your code.
+
+```swift
+import SwiftUIRequest
+```
+
 ## Usage
 
 The `@Request` property wrapper loads data automatically and exposes the latest value as an optional `wrappedValue`.
