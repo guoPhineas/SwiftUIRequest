@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// Describes a decodable API model with static request metadata.
+/// Describes a decodable API model based ResponseBaseModel with static request metadata.
 public protocol ResponseModel: ResponseBaseModel {
     /// The base URL used to request this model.
     static var requestURL: URL { get }

@@ -12,6 +12,10 @@ import SwiftUIRequest
 
 struct User: ResponseModel, Identifiable {
     static let requestURL = URL(string: "https://api.example.com/users")!
+    // Default request attrbutes
+    //static var requestMethod = .get
+    //static var requestHeaders = [:]
+    //static var requestBody = nil
 
     let id: Int?
     let name: String?

@@ -7,5 +7,5 @@
 
 import Foundation
 
-/// Describes a decodable API model without any request metadatas.
+/// Describes a decodable API base model.
 public protocol ResponseBaseModel: Decodable { }
