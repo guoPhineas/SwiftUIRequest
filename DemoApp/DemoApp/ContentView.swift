@@ -50,7 +50,14 @@ struct ContentView: View {
                         }
                     }
                 }else{
-                    Text("Failed to load data.")
+                    VStack{
+                        Text("Failed to load data.")
+                        if let error = $users.errorDescription {
+                            Text("Error: \(error)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             .toolbar {
