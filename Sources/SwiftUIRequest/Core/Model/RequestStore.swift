@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 
 /// Observable storage for request state updates.
 @MainActor
@@ -50,6 +51,8 @@ public final class RequestStore<Value: ResponseBaseModel> {
     /// - Parameter message: Human-readable error details.
     func setError(_ message: String?) {
         state.errorDescription = message
+        guard let message = message else { return }
+        logger.error("\(String(message))")
     }
     
     /// Save the mock data and mark it mock

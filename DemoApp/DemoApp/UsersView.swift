@@ -32,6 +32,9 @@ struct UsersView: View {
                                     Text("HTTP \(code)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                    Text("HTTP \($users.isMock)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
                                 if let error = $users.errorDescription {
                                     Text("Error: \(error)")

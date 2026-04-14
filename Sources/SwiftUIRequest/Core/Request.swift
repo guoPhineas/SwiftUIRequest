@@ -3,6 +3,7 @@
 
 import Foundation
 import Observation
+import OSLog
 #if canImport(SwiftUI)
 import SwiftUI
 #endif
@@ -172,7 +173,7 @@ public struct Request<Value: ResponseBaseModel> {
     /// Reloads data by spawning an async task.
     public func reload() {
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await reload()
         }
     }
 
@@ -199,6 +200,7 @@ public struct Request<Value: ResponseBaseModel> {
             store.setMockData(mockModel)
             store.setResponseCode(200)
             store.setError(nil)
+            logger.info("Using mock data of \(type(of: Value.self))")
             return
         }
         #endif
