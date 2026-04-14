@@ -20,6 +20,8 @@ import SwiftUIRequest
 
 The `@Request` property wrapper loads data automatically and exposes the latest value as an optional `wrappedValue`.
 
+> There is an example app on [DemoApp folder](./DemoApp).
+
 ```swift
 import SwiftUI
 import SwiftUIRequest
@@ -79,9 +81,66 @@ struct User: ResponseBaseModel, Identifiable {
 ) private var users: [User]?
 ```
 
+## Explicit URL requests
 
+You can also create a request directly from a URL:
 
-There is an example app on [DemoApp folder](./DemoApp).
+```swift
+// Use ResponseBaseModel protocol, only define the response model.
+struct User: ResponseBaseModel, Identifiable { 
+    let id: Int?
+    let name: String?
+    let username: String?
+    let email: String?
+}
+
+// Use in SwiftUI view
+@Request(
+    url: URL(string: "https://api.example.com/users")!,
+    method: .get,
+    headers: ["Accept": "application/json"]
+) private var users: [User]?
+```
+
+Or reuse a preset with an explicit URL:
+
+```swift
+// Use ResponseBaseModel protocol, only define the response model.
+struct User: ResponseBaseModel, Identifiable { 
+    let id: Int?
+    let name: String?
+    let username: String?
+    let email: String?
+}
+
+// Use in SwiftUI view
+@Request(
+    preset: preset,
+    url: URL(string: "https://api.example.com/users")!,
+    method: .get
+) private var users: [User]?
+```
+
+## Mock
+
+You can set mock data and it will be returned automatically when you are debuging your app.
+
+```swift
+struct User: ResponseBaseModel, Identifiable, Mockable {
+    static var mockData: any ResponseBaseModel  {
+        User(id: 0, name: "Bob", username: "bob", email: "bob@example.com", address: nil, company: nil)
+    }
+    
+    let id: Int?
+    let name: String?
+    let username: String?
+    let email: String?
+    let address: Address?
+    let company: Company?
+}
+```
+
+Just make your model to confirm to `Mockable` protocol and set the mockData.
 
 ## RequestConfiguration
 
@@ -127,46 +186,6 @@ If you want decode failures to keep the raw data, set `fallbackToRaw: false`.
     [User].self,
     fallbackToRaw: false
 ) private var users
-```
-
-## Explicit URL requests
-
-You can also create a request directly from a URL:
-
-```swift
-// Use ResponseBaseModel protocol, only define the response model.
-struct User: ResponseBaseModel, Identifiable { 
-    let id: Int?
-    let name: String?
-    let username: String?
-    let email: String?
-}
-
-// Use in SwiftUI view
-@Request(
-    url: URL(string: "https://api.example.com/users")!,
-    method: .get,
-    headers: ["Accept": "application/json"]
-) private var users: [User]?
-```
-
-Or reuse a preset with an explicit URL:
-
-```swift
-// Use ResponseBaseModel protocol, only define the response model.
-struct User: ResponseBaseModel, Identifiable { 
-    let id: Int?
-    let name: String?
-    let username: String?
-    let email: String?
-}
-
-// Use in SwiftUI view
-@Request(
-    preset: preset,
-    url: URL(string: "https://api.example.com/users")!,
-    method: .get
-) private var users: [User]?
 ```
 
 ## Supported HTTP methods
