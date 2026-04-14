@@ -32,7 +32,7 @@ struct UsersView: View {
                                     Text("HTTP \(code)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Text("HTTP \($users.isMock)")
+                                    Text("Mock \($users.isMock)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }

@@ -8,7 +8,12 @@
 import Foundation
 import SwiftUIRequest
 
-struct User: ResponseModel,Identifiable { // Use ResponseModel protocol
+struct User: ResponseModel, Identifiable, Mockable {
+    static var mockData: any ResponseBaseModel  {
+        User(id: 0, name: "Bob", username: "bob", email: "bob@example.com", address: nil, company: nil)
+    }
+    
+    // Use ResponseModel protocol
     static let requestURL = URL(string: "https://jsonplaceholder.typicode.com/users/")!
     
     let id: Int?

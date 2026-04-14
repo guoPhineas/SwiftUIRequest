@@ -159,6 +159,7 @@ Use `RequestConfiguration` to append query items, add headers, or set a bearer t
 The projected value exposes the observable request store:
 
 - `$users.isLoading` indicates whether a request is running
+- `$users.isMock` indicates whether it is mock data
 - `$users.responseCode` exposes the HTTP status code when available
 - `$users.errorDescription` exposes the latest error message
 - `$users.value` returns the decoded value when payload is `.decoded`

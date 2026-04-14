@@ -26,18 +26,15 @@ extension Array: ResponseModel where Element: ResponseModel {
     }
 }
 
-
+/// The base model for top-level array payload.
 extension Array: ResponseBaseModel where Element: ResponseBaseModel {
     
 }
 
+/// Allows a top-level array payload to using mock data.
 extension Array: Mockable where Element: Mockable&ResponseBaseModel {
     public static var mockData: any ResponseBaseModel {
         [Element.mockData as! Element]
     }
-    
-
-    
-
     
 }

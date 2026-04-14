@@ -6,7 +6,9 @@ let package = Package(
     name: "SwiftUIRequest",
     platforms: [
         .macOS(.v14),
-        .iOS(.v17)
+        .iOS(.v17),
+        .tvOS(.v13),
+        .watchOS(.v10)
     ],
     products: [
         .library(name: "SwiftUIRequest", targets: ["SwiftUIRequest"])
