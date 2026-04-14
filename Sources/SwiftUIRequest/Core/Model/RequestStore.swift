@@ -10,7 +10,7 @@ import Foundation
 /// Observable storage for request state updates.
 @MainActor
 @Observable
-public final class RequestStore<Value: Decodable> {
+public final class RequestStore<Value: ResponseBaseModel> {
     /// Current request state.
     public private(set) var state = RequestState<Value>()
 
@@ -50,5 +50,12 @@ public final class RequestStore<Value: Decodable> {
     /// - Parameter message: Human-readable error details.
     func setError(_ message: String?) {
         state.errorDescription = message
+    }
+    
+    /// Save the mock data and mark it mock
+    /// - Parameter mockData: The mock data.
+    func setMockData(_ mockData: Value){
+        self.setDecoded(mockData)
+        state.isMock = true
     }
 }

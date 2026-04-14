@@ -8,7 +8,7 @@
 import Foundation
 
 /// Tracks request result and progress for a typed request.
-public struct RequestState<Value: Decodable> {
+public struct RequestState<Value: ResponseBaseModel> {
     /// Decoded or raw payload returned by the request.
     public var payload: RequestPayload<Value>?
     /// HTTP status code from the response.
@@ -17,6 +17,8 @@ public struct RequestState<Value: Decodable> {
     public var isLoading: Bool = false
     /// Human-readable description of the latest error, if any.
     public var errorDescription: String?
+    /// Indicates whether it is mock data.
+    public var isMock: Bool = false
 
     /// Returns the decoded value when payload is `.decoded`.
     public var value: Value? {
