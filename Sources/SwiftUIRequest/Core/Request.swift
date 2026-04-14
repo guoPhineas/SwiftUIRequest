@@ -10,11 +10,19 @@ import SwiftUI
 /// Property wrapper that requests, decodes, and exposes typed network data.
 @MainActor
 @propertyWrapper
-public struct Request<Value: Decodable> {
+public struct Request<Value: ResponseBaseModel> {
     @ObservationIgnored private let store: RequestStore<Value>
     @ObservationIgnored private let loader: @Sendable () async throws -> (Data, URLResponse)
     @ObservationIgnored private let decoder: JSONDecoder
     @ObservationIgnored private let fallbackToRaw: Bool
+    @ObservationIgnored private var mockData: Value? {
+        #if DEBUG
+        guard let mockModel = Value.self as? Mockable.Type else { return nil }
+        return mockModel.mockData as? Value
+        #else
+        return nil
+        #endif
+    }
 
     /// Decoded value returned by the latest request.
     public var wrappedValue: Value? { store.state.value }
@@ -73,9 +81,10 @@ public struct Request<Value: Decodable> {
         let store = self.store
         let loader = self.loader
         let decoder = self.decoder
+        let mockData = self.mockData
         let fallbackToRaw = self.fallbackToRaw
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await Self.performFetch(store: store, loader: loader, decoder: decoder, mockData: mockData, fallbackToRaw: fallbackToRaw)
         }
     }
 
@@ -109,9 +118,10 @@ public struct Request<Value: Decodable> {
         let store = self.store
         let loader = self.loader
         let decoder = self.decoder
+        let mockData = self.mockData
         let fallbackToRaw = self.fallbackToRaw
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await Self.performFetch(store: store, loader: loader, decoder: decoder, mockData: mockData, fallbackToRaw: fallbackToRaw)
         }
     }
 
@@ -145,9 +155,10 @@ public struct Request<Value: Decodable> {
         let store = self.store
         let loader = self.loader
         let decoder = self.decoder
+        let mockData = self.mockData
         let fallbackToRaw = self.fallbackToRaw
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await Self.performFetch(store: store, loader: loader, decoder: decoder, mockData: mockData, fallbackToRaw: fallbackToRaw)
         }
     }
 
@@ -159,20 +170,20 @@ public struct Request<Value: Decodable> {
         let fallbackToRaw = self.fallbackToRaw
         return {
             Task {
-                await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+                await Self.performFetch(store: store, loader: loader, decoder: decoder, mockData: mockData, fallbackToRaw: fallbackToRaw)
             }
         }
     }
 
     /// Reloads data asynchronously.
     public func reload() async {
-        await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+        await Self.performFetch(store: store, loader: loader, decoder: decoder, mockData: mockData, fallbackToRaw: fallbackToRaw)
     }
 
     /// Reloads data by spawning an async task.
     public func reload() {
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await Self.performFetch(store: store, loader: loader, decoder: decoder, mockData: mockData, fallbackToRaw: fallbackToRaw)
         }
     }
 
@@ -185,10 +196,22 @@ public struct Request<Value: Decodable> {
     private static func performFetch(store: RequestStore<Value>,
                                      loader: @escaping @Sendable () async throws -> (Data, URLResponse),
                                      decoder: JSONDecoder,
+                                     mockData: Value?,
                                      fallbackToRaw: Bool) async {
         store.beginLoading()
         defer { store.finishLoading() }
-
+        #if DEBUG
+        if let mockModelArray = mockData{
+            guard let mockModel = mockData as? Value else {
+                store.setResponseCode(500)
+                store.setError("Cannot push mock data.")
+                return
+            }
+            store.setDecoded(mockModel)
+            store.setResponseCode(200)
+            return
+        }
+        #endif
         do {
             let (data, response) = try await loader()
             store.setResponseCode((response as? HTTPURLResponse)?.statusCode)

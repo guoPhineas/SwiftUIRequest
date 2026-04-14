@@ -30,3 +30,14 @@ extension Array: ResponseModel where Element: ResponseModel {
 extension Array: ResponseBaseModel where Element: ResponseBaseModel {
     
 }
+
+extension Array: Mockable where Element: Mockable&ResponseBaseModel {
+    public static var mockData: any ResponseBaseModel {
+        [Element.mockData as! Element]
+    }
+    
+
+    
+
+    
+}
