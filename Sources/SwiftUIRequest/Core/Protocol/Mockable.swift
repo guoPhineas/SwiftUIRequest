@@ -10,5 +10,5 @@ import Foundation
 /// A protocol that confirming model mockable
 public protocol Mockable where Self: ResponseBaseModel{
     /// Mock data
-    static var mockData: ResponseBaseModel { get }
+    static var mockData: Self { get }
 }

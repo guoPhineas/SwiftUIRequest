@@ -33,7 +33,7 @@ extension Array: ResponseBaseModel where Element: ResponseBaseModel {
 
 /// Allows a top-level array payload to using mock data.
 extension Array: Mockable where Element: Mockable&ResponseBaseModel {
-    public static var mockData: any ResponseBaseModel {
+    public static var mockData: Array<Element> {
         [Element.mockData as! Element]
     }
     

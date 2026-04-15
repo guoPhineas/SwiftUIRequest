@@ -123,13 +123,12 @@ struct User: ResponseBaseModel, Identifiable {
 
 ## Mock
 
-You can set mock data and it will be returned automatically when you are debuging your app.
+You can set mock data and it will be returned automatically when you are debugging your app.
 
 ```swift
 struct User: ResponseBaseModel, Identifiable, Mockable {
-    static var mockData: any ResponseBaseModel  {
-        User(id: 0, name: "Bob", username: "bob", email: "bob@example.com", address: nil, company: nil)
-    }
+    // Mock
+    static let mockData: User = User(id: 0, name: "Bob", username: "bob", email: "bob@example.com", address: nil, company: nil)
     
     let id: Int?
     let name: String?
