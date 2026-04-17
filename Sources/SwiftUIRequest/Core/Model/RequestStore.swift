@@ -21,7 +21,7 @@ public final class RequestStore<Value: ResponseBaseModel> {
     /// Marks the request as loading and clears previous error text.
     func beginLoading() {
         state.isLoading = true
-        state.errorDescription = nil
+        state.errorOccurred = nil
     }
 
     /// Marks the request as finished.
@@ -48,11 +48,11 @@ public final class RequestStore<Value: ResponseBaseModel> {
     }
 
     /// Saves an error description.
-    /// - Parameter message: Human-readable error details.
-    func setError(_ message: String?) {
-        state.errorDescription = message
-        guard let message = message else { return }
-        logger.error("\(String(message))")
+    /// - Parameter error: Errors that occur during operation.
+    func setError(_ error: RequestError?) {
+        state.errorOccurred = error
+        guard let error = error else { return }
+        logger.error("An error that occur during operation: \(String(error.localizedDescription))")
     }
     
     /// Save the mock data and mark it mock

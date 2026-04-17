@@ -36,8 +36,8 @@ struct UsersView: View {
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                if let error = $users.errorDescription {
-                                    Text("Error: \(error)")
+                                if let error = $users.errorOccurred {
+                                    Text("Error: \(error.localizedDescription)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -47,8 +47,8 @@ struct UsersView: View {
                 }else{
                     VStack{
                         Text("Failed to load data.")
-                        if let error = $users.errorDescription {
-                            Text("Error: \(error)")
+                        if let error = $users.errorOccurred {
+                            Text("Error: \(error.localizedDescription)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

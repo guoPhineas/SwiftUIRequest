@@ -26,8 +26,8 @@ public struct Request<Value: ResponseBaseModel> {
     public var responseCode: Int? { store.state.responseCode }
     /// Indicates whether the request is currently running.
     public var isLoading: Bool { store.state.isLoading }
-    /// Latest request/decode error description.
-    public var errorDescription: String? { store.state.errorDescription }
+    /// Latest request/decode error.
+    public var errorOccurred: RequestError? { store.state.errorOccurred }
     /// Raw response bytes when decoding fallback is used.
     public var rawData: Data? { store.state.rawData }
 
@@ -212,7 +212,8 @@ public struct Request<Value: ResponseBaseModel> {
         if let mockType = Value.self as? Mockable.Type {
             guard let mockModel = mockType.mockData as? Value else {
                 store.setResponseCode(500)
-                store.setError("Cannot cast mock data to \(Value.self). Actual: \(type(of: mockType.mockData))")
+                let requestError = RequestError.mockDataError("Cannot cast mock data to \(Value.self). Actual: \(type(of: mockType.mockData))")
+                store.setError(requestError)
                 return
             }
             store.setMockData(mockModel)
@@ -225,25 +226,32 @@ public struct Request<Value: ResponseBaseModel> {
         do {
             let (data, response) = try await loader()
             let httpResponse = response as? HTTPURLResponse
+            let isSuccessStatus = httpResponse.map { (200...299).contains($0.statusCode) } ?? true
             store.setResponseCode(httpResponse?.statusCode)
-            if let httpResponse, !(200...299).contains(httpResponse.statusCode) {
-                errorHandler?(nil, httpResponse, data)
+            if let httpResponse, !isSuccessStatus {
+                let requestError = RequestError.httpStatus(code: httpResponse.statusCode, data: data)
+                errorHandler?(requestError, httpResponse, data)
+                store.setError(requestError)
             }
             do {
                 let decoded = try decoder.decode(Value.self, from: data)
                 store.setDecoded(decoded)
-                store.setError(nil)
+                if isSuccessStatus {
+                    store.setError(nil)
+                }
             } catch {
+                let requestError = RequestError.decoding(error)
                 if fallbackToRaw {
                     store.setRaw(data)
-                    store.setError(error.localizedDescription)
+                    store.setError(requestError)
                 } else {
-                    store.setError(error.localizedDescription)
+                    store.setError(requestError)
                 }
             }
         } catch {
-            errorHandler?(error, nil, nil)
-            store.setError(String(describing: error))
+            let requestError = RequestError.network(error)
+            errorHandler?(requestError, nil, nil)
+            store.setError(requestError)
         }
     }
 }

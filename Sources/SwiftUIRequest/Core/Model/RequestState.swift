@@ -16,7 +16,7 @@ public struct RequestState<Value: ResponseBaseModel> {
     /// Indicates whether a request is currently running.
     public var isLoading: Bool = false
     /// Human-readable description of the latest error, if any.
-    public var errorDescription: String?
+    public var errorOccurred: RequestError?
     /// Indicates whether it is mock data.
     public var isMock: Bool = false
 
