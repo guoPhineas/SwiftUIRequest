@@ -37,6 +37,7 @@ public struct Request<Value: ResponseBaseModel> {
     ///   - session: URL session used to execute the request.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     public init(_ type: Value.Type,
                 session: URLSession = .shared,
                 decoder: JSONDecoder = JSONDecoder(),
@@ -52,6 +53,7 @@ public struct Request<Value: ResponseBaseModel> {
     ///   - session: URL session used to execute the request.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     public init(_ type: Value.Type,
                 configuration: RequestConfiguration,
                 session: URLSession = .shared,
@@ -93,6 +95,7 @@ public struct Request<Value: ResponseBaseModel> {
     ///   - session: URL session used to execute the request.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     public init(url: URL,
                 method: HTTPMethod = .get,
                 headers: [String: String] = [:],
@@ -134,6 +137,7 @@ public struct Request<Value: ResponseBaseModel> {
     ///   - session: URL session used to execute the request.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     public init(preset: RequestPreset,
                 url: URL,
                 method: HTTPMethod = .get,
@@ -195,6 +199,7 @@ public struct Request<Value: ResponseBaseModel> {
     ///   - loader: Asynchronous loader that returns response bytes and metadata.
     ///   - decoder: Decoder used to decode `Value` from the response payload.
     ///   - fallbackToRaw: Stores raw response bytes when decode fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     private static func performFetch(store: RequestStore<Value>,
                                      loader: @escaping @Sendable () async throws -> (Data, URLResponse),
                                      decoder: JSONDecoder,
@@ -251,6 +256,7 @@ public extension Request {
     ///   - session: URL session used to execute the request.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     init(_ type: Value.Type,
          preset: RequestPreset,
          session: URLSession = .shared,
