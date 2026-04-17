@@ -12,10 +12,11 @@ import SwiftUI
 @MainActor
 @propertyWrapper
 public struct Request<Value: ResponseBaseModel> {
-    @ObservationIgnored private let store: RequestStore<Value>
-    @ObservationIgnored private let loader: @Sendable () async throws -> (Data, URLResponse)
-    @ObservationIgnored private let decoder: JSONDecoder
-    @ObservationIgnored private let fallbackToRaw: Bool
+    private let store: RequestStore<Value>
+    private let loader: @Sendable () async throws -> (Data, URLResponse)
+    private let decoder: JSONDecoder
+    private let fallbackToRaw: Bool
+    private let errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)?
 
     /// Decoded value returned by the latest request.
     public var wrappedValue: Value? { store.state.value }
@@ -39,8 +40,9 @@ public struct Request<Value: ResponseBaseModel> {
     public init(_ type: Value.Type,
                 session: URLSession = .shared,
                 decoder: JSONDecoder = JSONDecoder(),
-                fallbackToRaw: Bool = true) where Value: ResponseModel {
-        self.init(type, configuration: RequestConfiguration(), session: session, decoder: decoder, fallbackToRaw: fallbackToRaw)
+                fallbackToRaw: Bool = true,
+                errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Value: ResponseModel {
+        self.init(type, configuration: RequestConfiguration(), session: session, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
     }
 
     /// Creates a request wrapper from a `RequestModel` type and additional request configuration.
@@ -54,10 +56,12 @@ public struct Request<Value: ResponseBaseModel> {
                 configuration: RequestConfiguration,
                 session: URLSession = .shared,
                 decoder: JSONDecoder = JSONDecoder(),
-                fallbackToRaw: Bool = true) where Value: ResponseModel {
+            fallbackToRaw: Bool = true,
+            errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Value: ResponseModel {
         self.store = RequestStore()
         self.decoder = decoder
         self.fallbackToRaw = fallbackToRaw
+        self.errorHandler = errorHandler
 
         let requestURL = type.requestURL
         let requestMethod = type.requestMethod
@@ -75,8 +79,9 @@ public struct Request<Value: ResponseBaseModel> {
         let loader = self.loader
         let decoder = self.decoder
         let fallbackToRaw = self.fallbackToRaw
+        let errorHandler = self.errorHandler
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
         }
     }
 
@@ -94,10 +99,12 @@ public struct Request<Value: ResponseBaseModel> {
                 body: Data? = nil,
                 session: URLSession = .shared,
                 decoder: JSONDecoder = JSONDecoder(),
-                fallbackToRaw: Bool = true) where Value: ResponseBaseModel{
+                fallbackToRaw: Bool = true,
+                errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Value: ResponseBaseModel{
         self.store = RequestStore()
         self.decoder = decoder
         self.fallbackToRaw = fallbackToRaw
+        self.errorHandler = errorHandler
         self.loader = {
             var request = URLRequest(url: url)
             request.httpMethod = method.rawValue
@@ -111,8 +118,9 @@ public struct Request<Value: ResponseBaseModel> {
         let loader = self.loader
         let decoder = self.decoder
         let fallbackToRaw = self.fallbackToRaw
+        let errorHandler = self.errorHandler
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
         }
     }
 
@@ -133,10 +141,12 @@ public struct Request<Value: ResponseBaseModel> {
                 body: Data? = nil,
                 session: URLSession = .shared,
                 decoder: JSONDecoder = JSONDecoder(),
-                fallbackToRaw: Bool = true) where Value: ResponseBaseModel {
+                fallbackToRaw: Bool = true,
+                errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Value: ResponseBaseModel {
         self.store = RequestStore()
         self.decoder = decoder
         self.fallbackToRaw = fallbackToRaw
+        self.errorHandler = errorHandler
         self.loader = {
             guard let request = preset.makeRequest(for: url, method: method, headers: headers, body: body) else {
                 throw URLError(.badURL)
@@ -147,8 +157,9 @@ public struct Request<Value: ResponseBaseModel> {
         let loader = self.loader
         let decoder = self.decoder
         let fallbackToRaw = self.fallbackToRaw
+        let errorHandler = self.errorHandler
         Task {
-            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+            await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
         }
     }
 
@@ -158,16 +169,17 @@ public struct Request<Value: ResponseBaseModel> {
         let loader = self.loader
         let decoder = self.decoder
         let fallbackToRaw = self.fallbackToRaw
+        let errorHandler = self.errorHandler
         return {
             Task {
-                await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+                await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
             }
         }
     }
 
     /// Reloads data asynchronously.
     public func reload() async {
-        await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw)
+        await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
     }
 
     /// Reloads data by spawning an async task.
@@ -186,7 +198,8 @@ public struct Request<Value: ResponseBaseModel> {
     private static func performFetch(store: RequestStore<Value>,
                                      loader: @escaping @Sendable () async throws -> (Data, URLResponse),
                                      decoder: JSONDecoder,
-                                     fallbackToRaw: Bool) async {
+                                     fallbackToRaw: Bool,
+                                     errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)?) async {
         store.beginLoading()
         defer { store.finishLoading() }
         #if DEBUG
@@ -206,7 +219,11 @@ public struct Request<Value: ResponseBaseModel> {
         #endif
         do {
             let (data, response) = try await loader()
-            store.setResponseCode((response as? HTTPURLResponse)?.statusCode)
+            let httpResponse = response as? HTTPURLResponse
+            store.setResponseCode(httpResponse?.statusCode)
+            if let httpResponse, !(200...299).contains(httpResponse.statusCode) {
+                errorHandler?(nil, httpResponse, data)
+            }
             do {
                 let decoded = try decoder.decode(Value.self, from: data)
                 store.setDecoded(decoded)
@@ -220,6 +237,7 @@ public struct Request<Value: ResponseBaseModel> {
                 }
             }
         } catch {
+            errorHandler?(error, nil, nil)
             store.setError(String(describing: error))
         }
     }
@@ -237,8 +255,9 @@ public extension Request {
          preset: RequestPreset,
          session: URLSession = .shared,
          decoder: JSONDecoder = JSONDecoder(),
-         fallbackToRaw: Bool = true) where Value: ResponseModel {
-        self.init(type, configuration: preset.configuration, session: session, decoder: decoder, fallbackToRaw: fallbackToRaw)
+         fallbackToRaw: Bool = true,
+         errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Value: ResponseModel {
+        self.init(type, configuration: preset.configuration, session: session, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
     }
 }
 
