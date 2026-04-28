@@ -7,5 +7,5 @@
 
 import Foundation
 
-/// Describes a decodable API base model.
-public typealias ResponseBaseModel = Decodable
+/// Describes a encodable API base model.
+public typealias RequestBaseModel = Encodable
