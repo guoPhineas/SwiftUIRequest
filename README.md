@@ -62,28 +62,7 @@ struct ContentView: View {
 }
 ```
 
-Or
-
-```swift
-// Use ResponseBaseModel protocol, only define the response model.
-struct User: ResponseBaseModel, Identifiable { 
-    let id: Int?
-    let name: String?
-    let username: String?
-    let email: String?
-}
-
-// Use in SwiftUI view
-@Request(
-    url: URL(string: "https://api.example.com/users")!,
-    method: .get,
-    headers: ["Accept": "application/json"]
-) private var users: [User]?
-```
-
-## Explicit URL requests
-
-You can also create a request directly from a URL:
+Or create a request from an explicit URL:
 
 ```swift
 // Use ResponseBaseModel protocol, only define the response model.
@@ -121,6 +100,60 @@ struct User: ResponseBaseModel, Identifiable {
 ) private var users: [User]?
 ```
 
+## Requestable (manual trigger + request body)
+
+`@Requestable` is similar to `@Request`, but it does not automatically start a request during initialization.
+Call `reload()` / `reload(_:)` to trigger a request.
+
+### JSON body (`Encodable`)
+
+```swift
+import SwiftUI
+import SwiftUIRequest
+
+struct CreateUserBody: Encodable {
+    let name: String
+}
+
+struct User: ResponseBaseModel, Identifiable {
+    let id: Int?
+    let name: String?
+}
+
+struct ContentView: View {
+    @Requestable<CreateUserBody, User>(
+        url: URL(string: "https://api.example.com/users")!,
+        method: .post,
+        headers: ["Content-Type": "application/json"]
+    ) private var createdUser
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(createdUser?.name ?? "-")
+            Button("Create") {
+                _createdUser.reload(.init(name: "Bob"))
+            }
+        }
+        .padding()
+    }
+}
+```
+
+### Raw body (`Data`)
+
+If the request body is already raw bytes, use `Request == Data`. `Data` is used directly as `httpBody`.
+
+```swift
+@Requestable<Data, User>(
+    url: URL(string: "https://api.example.com/users")!,
+    method: .post,
+    headers: ["Content-Type": "application/octet-stream"]
+) private var createdUser
+
+// ...
+_createdUser.reload(Data([0x01, 0x02, 0x03]))
+```
+
 ## Mock
 
 You can set mock data and it will be returned automatically when you are debugging your app.
@@ -139,7 +172,7 @@ struct User: ResponseBaseModel, Identifiable, Mockable {
 }
 ```
 
-Just make your model to confirm to `Mockable` protocol and set the mockData.
+Just make your model conform to `Mockable` protocol and set the mockData.
 
 ## RequestConfiguration
 
@@ -160,7 +193,7 @@ The projected value exposes the observable request store:
 - `$users.isLoading` indicates whether a request is running
 - `$users.isMock` indicates whether it is mock data
 - `$users.responseCode` exposes the HTTP status code when available
-- `$users.errorDescription` exposes the latest error message
+- `$users.errorOccurred` exposes the latest error
 - `$users.value` returns the decoded value when payload is `.decoded`
 - `$users.rawData` returns raw bytes when payload is `.raw`
 
@@ -170,16 +203,16 @@ The wrapper itself also exposes convenience properties:
 - `$users` through `projectedValue`
 - `responseCode`
 - `isLoading`
-- `errorDescription`
+- `errorOccurred`
 - `rawData`
 - `reloadAction`
 - `reload()`
 
 ## Decoding fallback
 
-By default, if decoding fails, the request stores raw response data in `RequestState.payload` as `.raw(data)` and records the decoding error in `errorDescription`.
+By default, if decoding fails, the request stores raw response data in `RequestState.payload` as `.raw(data)` and records the decoding error in `errorOccurred`.
 
-If you want decode failures to keep the raw data, set `fallbackToRaw: false`.
+If you do not want to keep the raw response data on decode failures, set `fallbackToRaw: false`.
 
 ```swift
 @Request(
@@ -204,6 +237,7 @@ If you want decode failures to keep the raw data, set `fallbackToRaw: false`.
 
 ## Notes
 
-- The request starts automatically when the wrapper is created.
+- `@Request` starts automatically when the wrapper is created.
+- `@Requestable` does not start automatically; call `reload()` / `reload(_:)`.
 - The latest response status code is available from `RequestState.responseCode`.
 - `RequestStore` is `@Observable`, so SwiftUI views can react to changes in loading and result state.
