@@ -11,13 +11,13 @@ import SwiftUI
 /// Property wrapper that requests, decodes, and exposes typed network data.
 ///
 /// Unlike `Request`, `Requestable` does not automatically start a request during initialization.
-/// Call `request(with:)` to trigger a request.
+/// Call `request(with:)` or `request(headers:body:)` to trigger a request.
 @MainActor
 @propertyWrapper
 public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel> {
     private let store: RequestStore<Response>
     private let loader: @Sendable () async throws -> (Data, URLResponse)
-    private let requestBuilder: @Sendable (Data?) throws -> URLRequest
+    private let requestBuilder: @Sendable (Data?, [String: String]?) throws -> URLRequest
     private let session: URLSession
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
@@ -163,9 +163,17 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         let requestBody = type.requestBody
         let preset = RequestPreset(configuration: configuration)
 
-        self.requestBuilder = { overrideBody in
+        self.requestBuilder = { overrideBody, overrideHeaders in
             let finalBody = overrideBody ?? requestBody
-            guard let request = preset.makeRequest(for: requestURL, method: requestMethod, headers: requestHeaders, body: finalBody) else {
+
+            let headersToUse: [String: String]
+            if let overrideHeaders, !overrideHeaders.isEmpty {
+                headersToUse = overrideHeaders
+            } else {
+                headersToUse = requestHeaders
+            }
+
+            guard let request = preset.makeRequest(for: requestURL, method: requestMethod, headers: headersToUse, body: finalBody) else {
                 throw URLError(.badURL)
             }
             return request
@@ -173,7 +181,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
 
         let requestBuilder = self.requestBuilder
         self.loader = {
-            let request = try requestBuilder(nil)
+            let request = try requestBuilder(nil, nil)
             return try await session.data(for: request)
         }
     }
@@ -206,11 +214,20 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         self.fallbackToRaw = fallbackToRaw
         self.errorHandler = errorHandler
 
-        self.requestBuilder = { overrideBody in
+        let baseHeaders = headers
+        self.requestBuilder = { overrideBody, overrideHeaders in
             var request = URLRequest(url: url)
             request.httpMethod = method.rawValue
             request.httpBody = overrideBody ?? body
-            for (key, value) in headers {
+
+            let headersToUse: [String: String]
+            if let overrideHeaders, !overrideHeaders.isEmpty {
+                headersToUse = overrideHeaders
+            } else {
+                headersToUse = baseHeaders
+            }
+
+            for (key, value) in headersToUse {
                 request.setValue(value, forHTTPHeaderField: key)
             }
             return request
@@ -218,7 +235,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
 
         let requestBuilder = self.requestBuilder
         self.loader = {
-            let request = try requestBuilder(nil)
+            let request = try requestBuilder(nil, nil)
             return try await session.data(for: request)
         }
     }
@@ -254,8 +271,16 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         self.fallbackToRaw = fallbackToRaw
         self.errorHandler = errorHandler
 
-        self.requestBuilder = { overrideBody in
-            guard let request = preset.makeRequest(for: url, method: method, headers: headers, body: overrideBody ?? body) else {
+        let baseHeaders = headers
+        self.requestBuilder = { overrideBody, overrideHeaders in
+            let headersToUse: [String: String]
+            if let overrideHeaders, !overrideHeaders.isEmpty {
+                headersToUse = overrideHeaders
+            } else {
+                headersToUse = baseHeaders
+            }
+
+            guard let request = preset.makeRequest(for: url, method: method, headers: headersToUse, body: overrideBody ?? body) else {
                 throw URLError(.badURL)
             }
             return request
@@ -263,7 +288,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
 
         let requestBuilder = self.requestBuilder
         self.loader = {
-            let request = try requestBuilder(nil)
+            let request = try requestBuilder(nil, nil)
             return try await session.data(for: request)
         }
     }
@@ -301,7 +326,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         await Self.performFetch(
             store: store,
             loader: {
-                let request = try requestBuilder(encodedBody)
+                let request = try requestBuilder(encodedBody, nil)
                 return try await session.data(for: request)
             },
             decoder: decoder,
@@ -326,7 +351,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
             await Self.performFetch(
                 store: store,
                 loader: {
-                    let request = try requestBuilder(encodedBody)
+                    let request = try requestBuilder(encodedBody, nil)
                     return try await session.data(for: request)
                 },
                 decoder: decoder,
@@ -336,10 +361,14 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         }
     }
 
-    /// Requests data asynchronously for an explicit URL.
-    public func request(url: URL,
-                        method: HTTPMethod = .get,
-                        headers: [String: String] = [:],
+    /// Requests data asynchronously using the URL and method configured by the initializer.
+    ///
+    /// - Parameters:
+    ///   - headers: Overrides the configured headers for this request only.
+    ///             When non-empty, it replaces all configured headers (including those from presets/configuration/`ResponseModel`).
+    ///             When empty, the configured headers are used.
+    ///   - body: Optional request body. When `Request == Data`, bytes are used directly as `httpBody`.
+    public func request(headers: [String: String] = [:],
                         body: Request? = nil) async {
         let encodedBody: Data?
         do {
@@ -349,16 +378,12 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
             return
         }
 
+        let requestBuilder = self.requestBuilder
         let session = self.session
         await Self.performFetch(
             store: store,
             loader: {
-                var request = URLRequest(url: url)
-                request.httpMethod = method.rawValue
-                request.httpBody = encodedBody
-                for (key, value) in headers {
-                    request.setValue(value, forHTTPHeaderField: key)
-                }
+                let request = try requestBuilder(encodedBody, headers)
                 return try await session.data(for: request)
             },
             decoder: decoder,
@@ -367,10 +392,8 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         )
     }
 
-    /// Requests data for an explicit URL by spawning an async task.
-    public func request(url: URL,
-                        method: HTTPMethod = .get,
-                        headers: [String: String] = [:],
+    /// Requests data using the URL and method configured by the initializer by spawning an async task.
+    public func request(headers: [String: String] = [:],
                         body: Request? = nil) {
         let encodedBody: Data?
         do {
@@ -380,17 +403,13 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
             return
         }
 
+        let requestBuilder = self.requestBuilder
         let session = self.session
         Task {
             await Self.performFetch(
                 store: store,
                 loader: {
-                    var request = URLRequest(url: url)
-                    request.httpMethod = method.rawValue
-                    request.httpBody = encodedBody
-                    for (key, value) in headers {
-                        request.setValue(value, forHTTPHeaderField: key)
-                    }
+                    let request = try requestBuilder(encodedBody, headers)
                     return try await session.data(for: request)
                 },
                 decoder: decoder,
