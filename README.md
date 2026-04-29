@@ -103,7 +103,7 @@ struct User: ResponseBaseModel, Identifiable {
 ## Requestable (manual trigger + request body)
 
 `@Requestable` is similar to `@Request`, but it does not automatically start a request during initialization.
-Call `reload()` / `reload(_:)` to trigger a request.
+Call `request(with:)` to trigger a request.
 
 ### JSON body (`Encodable`)
 
@@ -131,7 +131,7 @@ struct ContentView: View {
         VStack(spacing: 12) {
             Text(createdUser?.name ?? "-")
             Button("Create") {
-                _createdUser.reload(.init(name: "Bob"))
+                _createdUser.request(with: .init(name: "Bob"))
             }
         }
         .padding()
@@ -151,7 +151,7 @@ If the request body is already raw bytes, use `Request == Data`. `Data` is used 
 ) private var createdUser
 
 // ...
-_createdUser.reload(Data([0x01, 0x02, 0x03]))
+_createdUser.request(with: Data([0x01, 0x02, 0x03]))
 ```
 
 ## Mock
@@ -238,6 +238,6 @@ If you do not want to keep the raw response data on decode failures, set `fallba
 ## Notes
 
 - `@Request` starts automatically when the wrapper is created.
-- `@Requestable` does not start automatically; call `reload()` / `reload(_:)`.
+- `@Requestable` does not start automatically; call `request(with:)`.
 - The latest response status code is available from `RequestState.responseCode`.
 - `RequestStore` is `@Observable`, so SwiftUI views can react to changes in loading and result state.
