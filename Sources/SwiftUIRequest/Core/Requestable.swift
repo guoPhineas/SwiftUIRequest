@@ -11,7 +11,7 @@ import SwiftUI
 /// Property wrapper that requests, decodes, and exposes typed network data.
 ///
 /// Unlike `Request`, `Requestable` does not automatically start a request during initialization.
-/// Call `reload()` / `reload(_:)` to trigger a request.
+/// Call `request(with:)` to trigger a request.
 @MainActor
 @propertyWrapper
 public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel> {
@@ -24,7 +24,8 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     private let fallbackToRaw: Bool
     private let errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)?
 
-    private func makeHTTPBody(from body: Request) throws -> Data {
+    private func makeHTTPBody(from body: Request?) throws -> Data? {
+        guard let body else { return nil }
         if let data = body as? Data {
             return data
         }
@@ -44,37 +45,105 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     /// Raw response bytes when decoding fallback is used.
     public var rawData: Data? { store.state.rawData }
 
-    /// Creates a request wrapper from a `RequestModel` type.
+    /// Creates a request wrapper from a payload type plus a response model type.
     ///
     /// Note: This initializer does not start the request automatically.
     /// - Parameters:
-    ///   - type: The model type that provides static request metadata.
+    ///   - payload: The request body model type.
+    ///   - response: The response model type that provides static request metadata when it conforms to `ResponseModel`.
     ///   - session: URL session used to execute the request.
-    ///   - encoder: JSON encoder used for request body encoding in `reload(_:)`.
+    ///   - encoder: JSON encoder used for request body encoding in `request(with:)`.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
-    public init(_ type: Response.Type,
+    public init(payload: Request.Type,
+                response type: Response.Type,
                 session: URLSession = .shared,
                 encoder: JSONEncoder = JSONEncoder(),
                 decoder: JSONDecoder = JSONDecoder(),
                 fallbackToRaw: Bool = true,
                 errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Response: ResponseModel {
-        self.init(type, configuration: RequestConfiguration(), session: session, encoder: encoder, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
+        self.init(payload: payload, response: type, configuration: RequestConfiguration(), session: session, encoder: encoder, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
     }
-
-    /// Creates a request wrapper from a `RequestModel` type and additional request configuration.
+    
+    /// Creates a request wrapper from a payload type plus an explicit URL.
     ///
     /// Note: This initializer does not start the request automatically.
     /// - Parameters:
-    ///   - type: The model type that provides static request metadata.
-    ///   - configuration: Runtime query/header/auth configuration to merge into the request.
+    ///   - payload: The model type that provides static request payload metadata.
+    ///   - response: The response model type.
     ///   - session: URL session used to execute the request.
-    ///   - encoder: JSON encoder used for request body encoding in `reload(_:)`.
+    ///   - encoder: JSON encoder used for request body encoding in `request(with:)`.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
-    public init(_ type: Response.Type,
+    public init(payload: Request.Type,
+                response type: Response.Type,
+                url: URL,
+                method: HTTPMethod = .get,
+                headers: [String: String] = [:],
+                body: Data? = nil,
+                session: URLSession = .shared,
+                encoder: JSONEncoder = JSONEncoder(),
+                decoder: JSONDecoder = JSONDecoder(),
+                fallbackToRaw: Bool = true,
+                errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Response: ResponseBaseModel {
+        self.init(url: url,
+                  method: method,
+                  headers: headers,
+                  body: body,
+                  session: session,
+                  encoder: encoder,
+                  decoder: decoder,
+                  fallbackToRaw: fallbackToRaw,
+                  errorHandler: errorHandler)
+    }
+    
+    /// Creates a request wrapper from a payload type plus an explicit URL.
+    ///
+    /// Note: This initializer does not start the request automatically.
+    /// - Parameters:
+    ///   - payload: The model type that provides static request payload metadata.
+    ///   - session: URL session used to execute the request.
+    ///   - encoder: JSON encoder used for request body encoding in `request(with:)`.
+    ///   - decoder: JSON decoder used for typed decoding.
+    ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
+    public init(payload: Request.Type,
+                url: URL,
+                method: HTTPMethod = .get,
+                headers: [String: String] = [:],
+                body: Data? = nil,
+                session: URLSession = .shared,
+                encoder: JSONEncoder = JSONEncoder(),
+                decoder: JSONDecoder = JSONDecoder(),
+                fallbackToRaw: Bool = true,
+                errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Response: ResponseBaseModel {
+        self.init(url: url,
+                  method: method,
+                  headers: headers,
+                  body: body,
+                  session: session,
+                  encoder: encoder,
+                  decoder: decoder,
+                  fallbackToRaw: fallbackToRaw,
+                  errorHandler: errorHandler)
+    }
+
+    /// Creates a request wrapper from a payload type plus a response model type and additional request configuration.
+    ///
+    /// Note: This initializer does not start the request automatically.
+    /// - Parameters:
+    ///   - payload: The request body model type.
+    ///   - response: The response model type that provides static request metadata when it conforms to `ResponseModel`.
+    ///   - configuration: Runtime query/header/auth configuration to merge into the request.
+    ///   - session: URL session used to execute the request.
+    ///   - encoder: JSON encoder used for request body encoding in `request(with:)`.
+    ///   - decoder: JSON decoder used for typed decoding.
+    ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
+    ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
+    public init(payload: Request.Type,
+                response type: Response.Type,
                 configuration: RequestConfiguration,
                 session: URLSession = .shared,
                 encoder: JSONEncoder = JSONEncoder(),
@@ -117,7 +186,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     ///   - method: The HTTP method. Defaults to `GET`.
     ///   - headers: Additional request headers.
     ///   - session: URL session used to execute the request.
-    ///   - encoder: JSON encoder used for request body encoding in `reload(_:)`.
+    ///   - encoder: JSON encoder used for request body encoding in `request(with:)`.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
@@ -164,7 +233,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     ///   - headers: Additional request headers.
     ///   - body: The post request body.
     ///   - session: URL session used to execute the request.
-    ///   - encoder: JSON encoder used for request body encoding in `reload(_:)`.
+    ///   - encoder: JSON encoder used for request body encoding in `request(with:)`.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
@@ -199,7 +268,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         }
     }
 
-    /// Returns a closure that triggers a reload when called.
+    /// Returns a closure that triggers a request (without overriding the configured body) when called.
     public var reloadAction: () -> Void {
         let store = self.store
         let loader = self.loader
@@ -218,8 +287,8 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     /// If `Request` is `Data`, the bytes are used directly as `httpBody`.
     /// Otherwise, the request model is encoded as JSON and set to `httpBody`.
     /// - Parameter body: The request model or raw bytes used as `httpBody`.
-    public func request(with body: Request) async {
-        let encodedBody: Data
+    public func request(with body: Request? = nil) async {
+        let encodedBody: Data?
         do {
             encodedBody = try makeHTTPBody(from: body)
         } catch {
@@ -241,13 +310,9 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         )
     }
 
-    /// Requests data with a request body by spawning an async task.
-    ///
-    /// If `Request` is `Data`, the bytes are used directly as `httpBody`.
-    /// Otherwise, the request model is encoded as JSON and set to `httpBody`.
-    /// - Parameter body: The request model or raw bytes used as `httpBody`.
-    public func request(with body: Request) {
-        let encodedBody: Data
+    /// Requests data by spawning an async task.
+    public func request(with body: Request? = nil) {
+        let encodedBody: Data?
         do {
             encodedBody = try makeHTTPBody(from: body)
         } catch {
@@ -271,17 +336,70 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
         }
     }
 
-    /// Reloads data asynchronously.
-    public func reload() async {
-        await Self.performFetch(store: store, loader: loader, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
+    /// Requests data asynchronously for an explicit URL.
+    public func request(url: URL,
+                        method: HTTPMethod = .get,
+                        headers: [String: String] = [:],
+                        body: Request? = nil) async {
+        let encodedBody: Data?
+        do {
+            encodedBody = try makeHTTPBody(from: body)
+        } catch {
+            store.setError(.encoding(error))
+            return
+        }
+
+        let session = self.session
+        await Self.performFetch(
+            store: store,
+            loader: {
+                var request = URLRequest(url: url)
+                request.httpMethod = method.rawValue
+                request.httpBody = encodedBody
+                for (key, value) in headers {
+                    request.setValue(value, forHTTPHeaderField: key)
+                }
+                return try await session.data(for: request)
+            },
+            decoder: decoder,
+            fallbackToRaw: fallbackToRaw,
+            errorHandler: errorHandler
+        )
     }
 
-    /// Reloads data by spawning an async task.
-    public func reload() {
+    /// Requests data for an explicit URL by spawning an async task.
+    public func request(url: URL,
+                        method: HTTPMethod = .get,
+                        headers: [String: String] = [:],
+                        body: Request? = nil) {
+        let encodedBody: Data?
+        do {
+            encodedBody = try makeHTTPBody(from: body)
+        } catch {
+            store.setError(.encoding(error))
+            return
+        }
+
+        let session = self.session
         Task {
-            await reload()
+            await Self.performFetch(
+                store: store,
+                loader: {
+                    var request = URLRequest(url: url)
+                    request.httpMethod = method.rawValue
+                    request.httpBody = encodedBody
+                    for (key, value) in headers {
+                        request.setValue(value, forHTTPHeaderField: key)
+                    }
+                    return try await session.data(for: request)
+                },
+                decoder: decoder,
+                fallbackToRaw: fallbackToRaw,
+                errorHandler: errorHandler
+            )
         }
     }
+
 
     /// Performs the request, updates state, decodes payload, and optionally stores raw data on decode failure.
     /// - Parameters:
@@ -347,22 +465,25 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
 }
 
 public extension Requestable {
-    /// Creates a request wrapper from a model type and a preset.
+    /// Creates a request wrapper from a payload type plus a response model type and a preset.
     /// - Parameters:
-    ///   - type: The model type that provides static request metadata.
+    ///   - payload: The request body model type.
+    ///   - response: The response model type that provides static request metadata.
     ///   - preset: Shared request preset containing reusable configuration.
     ///   - session: URL session used to execute the request.
+    ///   - encoder: JSON encoder used for request body encoding in `request(with:)`.
     ///   - decoder: JSON decoder used for typed decoding.
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
-    init(_ type: Response.Type,
+    init(payload: Request.Type,
+         response type: Response.Type,
          preset: RequestPreset,
          session: URLSession = .shared,
          encoder: JSONEncoder = JSONEncoder(),
          decoder: JSONDecoder = JSONDecoder(),
          fallbackToRaw: Bool = true,
          errorHandler: (@Sendable (Error?, HTTPURLResponse?, Data?) -> Void)? = nil) where Response: ResponseModel {
-        self.init(type, configuration: preset.configuration, session: session, encoder: encoder, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
+        self.init(payload: payload, response: type, configuration: preset.configuration, session: session, encoder: encoder, decoder: decoder, fallbackToRaw: fallbackToRaw, errorHandler: errorHandler)
     }
 }
 
