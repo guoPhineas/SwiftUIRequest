@@ -105,6 +105,10 @@ struct User: ResponseBaseModel, Identifiable {
 `@Requestable` is similar to `@Request`, but it does not automatically start a request during initialization.
 Call `request(with:)` to trigger a request.
 
+If you need per-request headers (e.g. dynamic auth tokens), call `request(headers:body:)`.
+When `headers` is non-empty, it replaces all configured headers for that request only (including any headers coming from presets/configuration/`ResponseModel`).
+It does not mutate the wrapper's configured headers.
+
 ### JSON body (`Encodable`)
 
 ```swift
@@ -132,6 +136,13 @@ struct ContentView: View {
             Text(createdUser?.name ?? "-")
             Button("Create") {
                 _createdUser.request(with: .init(name: "Bob"))
+            }
+
+            Button("Create (with auth header)") {
+                _createdUser.request(
+                    headers: ["Authorization": "Bearer <token>"],
+                    body: .init(name: "Bob")
+                )
             }
         }
         .padding()
@@ -206,7 +217,8 @@ The wrapper itself also exposes convenience properties:
 - `errorOccurred`
 - `rawData`
 - `reloadAction`
-- `reload()`
+- `reload()` (only for `@Request`)
+- `request(with:)` / `request(headers:body:)` (only for `@Requestable`)
 
 ## Decoding fallback
 
@@ -238,6 +250,6 @@ If you do not want to keep the raw response data on decode failures, set `fallba
 ## Notes
 
 - `@Request` starts automatically when the wrapper is created.
-- `@Requestable` does not start automatically; call `request(with:)`.
+- `@Requestable` does not start automatically; call `request(with:)` (or `request(headers:body:)`).
 - The latest response status code is available from `RequestState.responseCode`.
 - `RequestStore` is `@Observable`, so SwiftUI views can react to changes in loading and result state.
