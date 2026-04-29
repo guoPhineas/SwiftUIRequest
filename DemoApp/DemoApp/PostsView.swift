@@ -16,6 +16,9 @@ struct PostsView: View {
             List(posts ?? []){post in
                 PostView(post: post)
             }
+            .refreshable {
+                _posts.reload()
+            }
             .toolbar {
                 if $posts.isLoading {
                     ProgressView()

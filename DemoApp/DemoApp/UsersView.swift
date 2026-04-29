@@ -55,6 +55,9 @@ struct UsersView: View {
                     }
                 }
             }
+            .refreshable {
+                _users.reload()
+            }
             .toolbar {
                 if $users.isLoading {
                     ProgressView()
