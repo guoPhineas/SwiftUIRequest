@@ -80,7 +80,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     public init(payload: Request.Type,
                 response type: Response.Type,
                 url: URL,
-                method: HTTPMethod = .get,
+                method: HTTPMethod,
                 headers: [String: String] = [:],
                 body: Data? = nil,
                 session: URLSession = .shared,
@@ -111,7 +111,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     public init(payload: Request.Type,
                 url: URL,
-                method: HTTPMethod = .get,
+                method: HTTPMethod,
                 headers: [String: String] = [:],
                 body: Data? = nil,
                 session: URLSession = .shared,
@@ -199,7 +199,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     ///   - fallbackToRaw: Stores raw data when decoding fails if set to `true`.
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     public init(url: URL,
-                method: HTTPMethod = .get,
+                method: HTTPMethod,
                 headers: [String: String] = [:],
                 body: Data? = nil,
                 session: URLSession = .shared,
@@ -256,7 +256,7 @@ public struct Requestable<Request: RequestBaseModel, Response: ResponseBaseModel
     ///   - errorHandler: Optional closure invoked on URLSession errors or non-2xx responses.
     public init(preset: RequestPreset,
                 url: URL,
-                method: HTTPMethod = .get,
+                method: HTTPMethod,
                 headers: [String: String] = [:],
                 body: Data? = nil,
                 session: URLSession = .shared,
